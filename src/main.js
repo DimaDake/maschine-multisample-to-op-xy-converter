@@ -315,7 +315,11 @@ convertButton.addEventListener('click', async () => {
      
      logMessage('All instruments processed. Generating final ZIP file...', 'final');
 
-     const zipBlob = await mainZip.generateAsync({ type: "blob" });
+     const zipBlob = await mainZip.generateAsync({ type: "blob" }, (metadata) => {
+        if (metadata.percent) {
+            logMessage(`Zip generation progress: ${metadata.percent.toFixed(2)}%`);
+        }
+     });
      const downloadUrl = URL.createObjectURL(zipBlob);
      const finalZipName = `zzm-presets-all.zip`;
                   addResultLink(finalZipName, downloadUrl);
