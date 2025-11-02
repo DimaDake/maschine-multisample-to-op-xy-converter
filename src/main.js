@@ -153,6 +153,7 @@ const selectFolderButton = document.getElementById('select-folder-button');
 const selectLibraryButton = document.getElementById('select-library-button');
 const convertButton = document.getElementById('convert-button');
 const testRunCheckbox = document.getElementById('test-run-checkbox');
+const sampleRateSelect = document.getElementById('sample-rate');
 const logContainer = document.getElementById('log-container');
 const resultsContainer = document.getElementById('results-container');
 const fileCountEl = document.getElementById('file-count');
@@ -369,7 +370,7 @@ async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShort
     logMessage(`Processing instrument: ${instrumentName} (Type: ${instrumentType}, Pack: ${packShortName || 'N/A'})`);
     
     const patchJson = JSON.parse(JSON.stringify(baseMultisampleJson));
-    const targetSampleRate = 22050;
+    const targetSampleRate = parseInt(sampleRateSelect.value, 10);
     let samplesData = [];
 
     // 1. Parse all filenames

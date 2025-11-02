@@ -56,6 +56,14 @@
                 <input id="test-run-checkbox" type="checkbox" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
                 <label for="test-run-checkbox" class="ml-2 text-gray-700 font-medium">Test Run (convert only the first instrument)</label>
             </div>
+            <div class="flex items-center mt-4">
+                <label for="sample-rate" class="mr-2 text-gray-700 font-medium">Sample Rate:</label>
+                <select id="sample-rate" class="border-gray-300 rounded focus:ring-blue-500">
+                    <option value="11025">11025</option>
+                    <option value="22050" selected>22050</option>
+                    <option value="44100">44100</option>
+                </select>
+            </div>
             <p id="file-count" class="text-gray-600 mt-4 font-medium"></p>
         </div>
 
