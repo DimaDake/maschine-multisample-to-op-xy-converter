@@ -242,8 +242,6 @@ selectLibraryButton.addEventListener('click', async () => {
             if (saveFolderButton) {
                 saveFolderButton.disabled = false;
             }
-            convertButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
-            convertButton.classList.add('bg-green-600', 'hover:bg-green-700');
         } else {
             logMessage('No valid instrument packs found.', 'error');
         }
@@ -333,10 +331,15 @@ convertButton.addEventListener('click', async () => {
      }
      
      logMessage('All instruments processed. Generating final ZIP file...', 'final');
+    let lastLoggedPercent = -1;
 
      const zipBlob = await mainZip.generateAsync({ type: "blob" }, (metadata) => {
         if (metadata.percent) {
-            logMessage(`Zip generation progress: ${metadata.percent.toFixed(2)}%`);
+            const percent = metadata.percent;
+            if (percent >= lastLoggedPercent + 0.1) {
+                logMessage(`Zip generation progress: ${percent.toFixed(2)}%`);
+                lastLoggedPercent = percent;
+            }
         }
      });
      const downloadUrl = URL.createObjectURL(zipBlob);
