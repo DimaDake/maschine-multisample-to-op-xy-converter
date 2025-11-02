@@ -317,9 +317,17 @@ convertButton.addEventListener('click', async () => {
      const zipBlob = await mainZip.generateAsync({ type: "blob" });
      const downloadUrl = URL.createObjectURL(zipBlob);
      const finalZipName = `zzm-presets-all.zip`;
-     addResultLink(finalZipName, downloadUrl);
-     logMessage(`Successfully created ${finalZipName}.`, 'success');
-});
+                  addResultLink(finalZipName, downloadUrl);
+                  logMessage(`Successfully created ${finalZipName}.`, 'success');
+     
+                  // Track custom event for preset conversion
+                  if (typeof gtag === 'function') {
+                      gtag('event', 'preset_converted', {
+                          'event_category': 'Conversion',
+                          'event_label': finalZipName, // Name of the generated zip file
+                          'value': 1 // Or any other relevant metric
+                      });
+                  }});
 
 function generateFinalPresetName(baseName) {
     let finalName = baseName;
