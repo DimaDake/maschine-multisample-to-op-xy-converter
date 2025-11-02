@@ -11,3 +11,7 @@ npm test
 ```
 
 Ensure that all tests pass before committing your changes.
+
+## Documentation
+
+Update this file with every change to ensure that it explains the structure of the project

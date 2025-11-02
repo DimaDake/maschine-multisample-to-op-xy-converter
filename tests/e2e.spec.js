@@ -81,7 +81,7 @@ test('should generate the correct zip file', async ({ page }) => {
     };
   }, mockStructure);
 
-  await page.goto('/converter.html');
+  await page.goto('/index.html');
 
   await page.locator('#select-folder-button').click();
 
