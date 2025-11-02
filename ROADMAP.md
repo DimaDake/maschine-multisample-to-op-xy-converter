@@ -6,10 +6,10 @@ This plan outlines the steps to evolve the converter from a single-file applicat
 
 This phase focuses on improving the project's structure and maintainability, which is the foundation of any professional website.
 
-- [ ] **Separate HTML, CSS, and JavaScript:**
-    - [ ] Create a `src/` directory.
-    - [ ] Move all JavaScript code from `index.html` into separate files within `src/` (e.g., `src/main.js`, `src/audio.js`).
-    - [ ] Move the inline CSS into a dedicated `src/styles.css` file.
+- [x] **Separate HTML, CSS, and JavaScript:**
+    - [x] Create a `src/` directory.
+    - [x] Move all JavaScript code from `index.html` into separate files within `src/` (e.g., `src/main.js`, `src/audio.js`).
+    - [x] Move the inline CSS into a dedicated `src/styles.css` file.
 - [ ] **Set up a modern build process:**
     - [ ] Install and configure a build tool like Vite or Parcel. This will handle bundling, minification, and provide a better development server.
     - [ ] Install Tailwind CSS as a PostCSS plugin instead of using the CDN. This will allow for purging unused styles, resulting in a much smaller final CSS file.
