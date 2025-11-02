@@ -242,6 +242,8 @@ selectLibraryButton.addEventListener('click', async () => {
             if (saveFolderButton) {
                 saveFolderButton.disabled = false;
             }
+            convertButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            convertButton.classList.add('bg-green-600', 'hover:bg-green-700');
         } else {
             logMessage('No valid instrument packs found.', 'error');
         }
