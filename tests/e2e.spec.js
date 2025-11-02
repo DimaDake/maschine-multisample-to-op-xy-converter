@@ -274,8 +274,12 @@ test('should handle NI library structure with pack names', async ({ page }) => {
   await page.goto('/index.html');
   await page.locator('#select-library-button').click();
   await expect(page.locator('#file-count')).toHaveText('3 instrument(s) found.', { timeout: 20000 });
-  await expect(page.locator('#convert-button')).toBeEnabled();
-  await page.locator('#convert-button').click();
+
+  const convertButton = page.locator('#convert-button');
+  await expect(convertButton).toBeEnabled();
+  await expect(convertButton).toHaveClass(/bg-green-600/);
+
+  await convertButton.click();
 
   const downloadLink = page.locator('#results-container a');
   await downloadLink.waitFor({ state: 'visible', timeout: 90000 });
