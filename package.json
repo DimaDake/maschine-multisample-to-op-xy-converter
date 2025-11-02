@@ -1,0 +1,29 @@
+{
+  "name": "maschine-multisample-to-op-xy-converter",
+  "version": "1.0.0",
+  "description": "A web based converter from multisample NI Maschine instruments to OP-XY presets",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DimaDake/maschine-multisample-to-op-xy-converter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/DimaDake/maschine-multisample-to-op-xy-converter/issues"
+  },
+  "homepage": "https://github.com/DimaDake/maschine-multisample-to-op-xy-converter#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "adm-zip": "^0.5.16",
+    "http-server": "^14.1.1"
+  }
+}
