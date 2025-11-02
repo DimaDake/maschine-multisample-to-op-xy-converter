@@ -108,17 +108,22 @@ test('should generate the correct zip file', async ({ page }) => {
   const generatedEntries = generatedZip.getEntries().map(e => e.entryName).sort();
 
   // 1. Verify the file structure inside the zip
-  const expectedPresetName = 'zzm-Bass-TestBass.preset';
+  const soundType = 'Bass';
+  const instrumentName = 'TestBass';
+  const soundTypeFolder = `zzm-${soundType}`;
+  const presetName = `zzm-${instrumentName}.preset`;
+  const presetPath = `${soundTypeFolder}/${presetName}`;
   const expectedEntries = [
-    `${expectedPresetName}/`,
-    `${expectedPresetName}/TestBass b2.wav`,
-    `${expectedPresetName}/TestBass c2.wav`,
-    `${expectedPresetName}/patch.json`,
+    `${soundTypeFolder}/`,
+    `${presetPath}/`,
+    `${presetPath}/TestBass b2.wav`,
+    `${presetPath}/TestBass c2.wav`,
+    `${presetPath}/patch.json`,
   ].sort();
   expect(generatedEntries).toEqual(expectedEntries);
 
   // 2. Verify the content of patch.json
-  const generatedPatch = JSON.parse(generatedZip.readAsText(`${expectedPresetName}/patch.json`));
+  const generatedPatch = JSON.parse(generatedZip.readAsText(`${presetPath}/patch.json`));
   expect(generatedPatch.type).toBe('multisampler');
   expect(generatedPatch.regions.length).toBe(2);
 
@@ -129,8 +134,8 @@ test('should generate the correct zip file', async ({ page }) => {
   expect(generatedPatch.regions[1]['pitch.keycenter']).toBe(59); // B2
 
   // 3. Verify WAV files exist
-  const generatedWav1 = generatedZip.getEntry(`${expectedPresetName}/TestBass b2.wav`);
-  const generatedWav2 = generatedZip.getEntry(`${expectedPresetName}/TestBass c2.wav`);
+  const generatedWav1 = generatedZip.getEntry(`${presetPath}/TestBass b2.wav`);
+  const generatedWav2 = generatedZip.getEntry(`${presetPath}/TestBass c2.wav`);
   expect(generatedWav1).not.toBeNull();
   expect(generatedWav2).not.toBeNull();
 
