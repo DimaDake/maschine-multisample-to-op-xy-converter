@@ -48,3 +48,7 @@ To run this project locally:
     npx http-server -p 3000 --cors
     ```
 4.  Open `http://localhost:3000` in your browser.
+
+## Acknowledgements
+
+The core preset conversion algorithm was originally implemented in the [OP-XY Drum Tool](https://buba447.github.io/opxy-drum-tool/multisample-tool.html). This project adapts and builds upon that foundation.
