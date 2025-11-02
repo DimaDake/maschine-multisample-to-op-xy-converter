@@ -150,6 +150,7 @@ const baseMultisampleJson = {
 // --- UI & App Logic ---
 
 const selectFolderButton = document.getElementById('select-folder-button');
+const selectLibraryButton = document.getElementById('select-library-button');
 const convertButton = document.getElementById('convert-button');
 const testRunCheckbox = document.getElementById('test-run-checkbox');
 const logContainer = document.getElementById('log-container');
@@ -157,6 +158,7 @@ const resultsContainer = document.getElementById('results-container');
 const fileCountEl = document.getElementById('file-count');
 
 let instruments = {};
+let generatedPresetNames = new Set();
 
 function logMessage(message, type = 'info') {
     const p = document.createElement('p');
@@ -182,18 +184,77 @@ function clearResults() {
     resultsContainer.innerHTML = '';
 }
 
-async function processDirectory(dirHandle, path = '') {
+function getPackShortName(packName) {
+    const words = packName.split(/\s+/);
+    if (words.length > 1) {
+        return words.map(word => word.charAt(0).toUpperCase()).join('');
+    }
+    return packName.substring(0, 3).toUpperCase();
+}
+
+async function findInstrumentsDirectory(packHandle, packShortName) {
+    for await (const entry of packHandle.values()) {
+        if (entry.kind === 'directory' && entry.name === 'Samples') {
+            for await (const subEntry of entry.values()) {
+                if (subEntry.kind === 'directory' && subEntry.name === 'Instruments') {
+                    await processDirectory(subEntry, packShortName);
+                    return;
+                }
+            }
+        }
+    }
+}
+
+selectLibraryButton.addEventListener('click', async () => {
+    if (!window.showDirectoryPicker) {
+        logMessage('Your browser does not support the File System Access API.', 'error');
+        return;
+    }
+    try {
+        const dirHandle = await window.showDirectoryPicker();
+        instruments = {};
+        generatedPresetNames.clear();
+        clearLogs();
+        clearResults();
+        fileCountEl.textContent = '';
+        convertButton.disabled = true;
+
+        logMessage(`Scanning library: ${dirHandle.name}...`);
+
+        for await (const packHandle of dirHandle.values()) {
+            if (packHandle.kind === 'directory') {
+                logMessage(`Searching for instruments in pack: ${packHandle.name}`);
+                await findInstrumentsDirectory(packHandle, getPackShortName(packHandle.name));
+            }
+        }
+
+        const instrumentCount = Object.keys(instruments).length;
+        fileCountEl.textContent = `${instrumentCount} instrument(s) found.`;
+        logMessage(`Scan complete. Found ${instrumentCount} instrument(s).`, 'success');
+
+        if (instrumentCount > 0) {
+            convertButton.disabled = false;
+        } else {
+            logMessage('No valid instrument packs found.', 'error');
+        }
+    } catch (err) {
+        if (err.name !== 'AbortError') {
+            logMessage(`Error selecting directory: ${err.message}`, 'error');
+        }
+    }
+});
+
+async function processDirectory(dirHandle, packName, path = '') {
    for await (const entry of dirHandle.values()) {
        const currentPath = path ? `${path}/${entry.name}` : entry.name;
        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.wav')) {
-           // The instrument name is the relative path of the folder containing the wav file
            const instrumentName = path; 
            if (!instruments[instrumentName]) {
-               instruments[instrumentName] = [];
+               instruments[instrumentName] = { files: [], pack: packName };
            }
-           instruments[instrumentName].push(entry);
+           instruments[instrumentName].files.push(entry);
        } else if (entry.kind === 'directory') {
-           await processDirectory(entry, currentPath);
+           await processDirectory(entry, packName, currentPath);
        }
    }
 }
@@ -206,8 +267,8 @@ selectFolderButton.addEventListener('click', async () => {
 
     try {
         const dirHandle = await window.showDirectoryPicker();
-        // Reset state
         instruments = {};
+        generatedPresetNames.clear();
         clearLogs();
         clearResults();
         fileCountEl.textContent = '';
@@ -216,7 +277,7 @@ selectFolderButton.addEventListener('click', async () => {
         convertButton.classList.remove('bg-green-600', 'hover:bg-green-700');
         
         logMessage(`Scanning directory: ${dirHandle.name}...`);
-        await processDirectory(dirHandle);
+        await processDirectory(dirHandle, null);
 
         const instrumentCount = Object.keys(instruments).length;
         fileCountEl.textContent = `${instrumentCount} instrument(s) found.`;
@@ -246,9 +307,9 @@ convertButton.addEventListener('click', async () => {
          logMessage('Test run enabled. Processing first instrument only.');
          instrumentEntries = [instrumentEntries[0]];
      }
-
-     for (const [instrumentPath, wavFileHandles] of instrumentEntries) {
-         await addPresetToZip(mainZip, instrumentPath, wavFileHandles);
+    generatedPresetNames.clear();
+     for (const [instrumentPath, instrumentData] of instrumentEntries) {
+         await addPresetToZip(mainZip, instrumentPath, instrumentData.files, instrumentData.pack);
      }
      
      logMessage('All instruments processed. Generating final ZIP file...', 'final');
@@ -260,17 +321,44 @@ convertButton.addEventListener('click', async () => {
      logMessage(`Successfully created ${finalZipName}.`, 'success');
 });
 
-async function addPresetToZip(mainZip, instrumentPath, wavFileHandles) {
+function generateFinalPresetName(baseName) {
+    let finalName = baseName;
+    let counter = 1;
+    while (generatedPresetNames.has(finalName)) {
+        const suffix = `-${counter}`;
+        finalName = baseName.substring(0, 20 - suffix.length) + suffix;
+        counter++;
+    }
+    generatedPresetNames.add(finalName);
+    return finalName;
+}
+
+
+async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShortName = null) {
     const pathParts = instrumentPath.split('/');
     const instrumentName = pathParts.pop() || 'Unnamed';
-    const instrumentType = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Misc';
-    const cleanedInstrumentName = sanitizeForPath(instrumentName.replace(/ samples?/i, '').trim());
+    const instrumentType = pathParts.length > 0 ? pathParts.pop() : 'Misc';
+
+    const cleanedInstrumentName = sanitizeForPath(instrumentName.replace(/ samples?/i, '').trim())
+        .replace(/\s+/g, '-');
+
+    let basePresetName;
+    if (packShortName) {
+        basePresetName = `zzm-${packShortName}-${cleanedInstrumentName}`;
+    } else {
+        basePresetName = `zzm-${cleanedInstrumentName}`;
+    }
+
+    if (basePresetName.length > 20) {
+        basePresetName = basePresetName.substring(0, 20);
+    }
+
+    const finalPresetName = generateFinalPresetName(basePresetName);
 
     const soundTypeFolder = `zzm-${sanitizeForPath(instrumentType)}`;
-    const presetName = `zzm-${cleanedInstrumentName}.preset`;
-    const presetFolderName = `${soundTypeFolder}/${presetName}`;
+    const presetFolderName = `${soundTypeFolder}/${finalPresetName}.preset`;
 
-    logMessage(`Processing instrument: ${instrumentName}`);
+    logMessage(`Processing instrument: ${instrumentName} (Type: ${instrumentType}, Pack: ${packShortName || 'N/A'})`);
     
     const patchJson = JSON.parse(JSON.stringify(baseMultisampleJson));
     const targetSampleRate = 22050;
