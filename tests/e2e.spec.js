@@ -143,6 +143,146 @@ test('should generate the correct zip file', async ({ page }) => {
   fs.unlinkSync(tempFilePath);
 });
 
+test('should save the correct folder structure using File System Access API', async ({ page }) => {
+  test.setTimeout(60000);
+  page.on('console', msg => console.log(`BROWSER LOG: ${msg.text()}`));
+
+  const mockStructure = {
+    name: 'Instruments',
+    kind: 'directory',
+    entries: {
+      'Bass': {
+        name: 'Bass',
+        kind: 'directory',
+        entries: {
+          'TestBass': {
+            name: 'TestBass',
+            kind: 'directory',
+            entries: {
+              'TestBass b2.wav': { name: 'TestBass b2.wav', kind: 'file', path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass b2.wav' },
+              'TestBass c2.wav': { name: 'TestBass c2.wav', kind: 'file', path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass c2.wav' }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  await page.route('**/__playwright_mock_file__/**', (route, request) => {
+    const requestedPath = decodeURIComponent(request.url().split('/__playwright_mock_file__/')[1]);
+    const filePath = path.resolve(__dirname, '..', requestedPath);
+    if (fs.existsSync(filePath)) {
+      return route.fulfill({ status: 200, contentType: 'audio/wav', body: fs.readFileSync(filePath) });
+    }
+    return route.fulfill({ status: 404 });
+  });
+
+  await page.addInitScript((mockStructure) => {
+    // This array will store a log of all file system operations.
+    window.fileSystemAccessLog = [];
+
+    function createMockFileHandle(path) {
+      return {
+        async createWritable() {
+          return {
+            async write(content) {
+              window.fileSystemAccessLog.push({ type: 'file', path, content: typeof content === 'string' ? JSON.parse(content) : 'binary_wav_data' });
+            },
+            async close() { /* no-op */ }
+          };
+        }
+      };
+    }
+
+    function createMockDirectoryHandle(path) {
+      return {
+        name: path.split('/').pop(),
+        kind: 'directory',
+        async getDirectoryHandle(name, options) {
+          window.fileSystemAccessLog.push({ type: 'dir', path: `${path}/${name}` });
+          return createMockDirectoryHandle(`${path}/${name}`);
+        },
+        async getFileHandle(name, options) {
+           return createMockFileHandle(`${path}/${name}`);
+        }
+      };
+    }
+
+    function createMockHandle(entry) {
+        if (entry.kind === 'file') {
+            return {
+                name: entry.name,
+                kind: entry.kind,
+                async getFile() {
+                    const response = await fetch(`/__playwright_mock_file__/${entry.path}`);
+                    return new File([await response.blob()], entry.name, { type: 'audio/wav' });
+                }
+            };
+        }
+        return {
+            name: entry.name,
+            kind: entry.kind,
+            async *[Symbol.asyncIterator]() {
+                if (entry.kind === 'directory') {
+                    for (const child of Object.values(entry.entries)) {
+                        yield createMockHandle(child);
+                    }
+                }
+            },
+            values() { return this[Symbol.asyncIterator](); },
+        };
+    }
+
+    // Mock picker for reading files
+    const originalShowDirectoryPicker = window.showDirectoryPicker;
+    window.showDirectoryPicker = async () => {
+        // This is a simplified mock. We check a global flag to decide if this
+        // is the 'open' call or the 'save' call.
+        if (window.isSaving) {
+            window.isSaving = false;
+            return createMockDirectoryHandle('root');
+        }
+        return createMockHandle(mockStructure);
+    };
+
+  }, mockStructure);
+
+  await page.goto('/index.html');
+
+  // 1. Select folder and verify instruments are found
+  await page.locator('#select-folder-button').click();
+  await expect(page.locator('#file-count')).toHaveText('1 instrument(s) found.');
+  await expect(page.locator('#save-folder-button')).toBeVisible();
+  await expect(page.locator('#save-folder-button')).toBeEnabled();
+
+  // 2. Click the save button
+  await page.evaluate(() => { window.isSaving = true; }); // Set flag for our mock
+  await page.locator('#save-folder-button').click();
+
+  // 3. Wait for the process to complete
+  await expect(page.locator('p:text("All instruments processed and saved.")')).toBeVisible({ timeout: 30000 });
+
+  // 4. Verify the file system operations
+  const log = await page.evaluate(() => window.fileSystemAccessLog);
+
+  expect(log.some(entry => entry.type === 'dir' && entry.path === 'root/zzm-Bass')).toBe(true);
+  expect(log.some(entry => entry.type === 'dir' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset')).toBe(true);
+
+  const patchFile = log.find(entry => entry.type === 'file' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset/patch.json');
+  expect(patchFile).toBeDefined();
+  expect(patchFile.content.regions.length).toBe(2);
+  expect(patchFile.content.regions[0].sample).toBe('TestBass c2.wav');
+  expect(patchFile.content.regions[1].sample).toBe('TestBass b2.wav');
+
+  const wavFile1 = log.find(entry => entry.type === 'file' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset/TestBass c2.wav');
+  expect(wavFile1).toBeDefined();
+  expect(wavFile1.content).toBe('binary_wav_data');
+
+  const wavFile2 = log.find(entry => entry.type === 'file' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset/TestBass b2.wav');
+  expect(wavFile2).toBeDefined();
+  expect(wavFile2.content).toBe('binary_wav_data');
+});
+
 test('should handle NI library structure with pack names', async ({ page }) => {
   test.setTimeout(120000); // Increased timeout for potentially longer processing
   page.on('console', msg => console.log(`BROWSER LOG: ${msg.text()}`));

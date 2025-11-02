@@ -152,9 +152,9 @@ const baseMultisampleJson = {
 const selectFolderButton = document.getElementById('select-folder-button');
 const selectLibraryButton = document.getElementById('select-library-button');
 const convertButton = document.getElementById('convert-button');
+const saveFolderButton = document.getElementById('save-folder-button');
 const testRunCheckbox = document.getElementById('test-run-checkbox');
 const sampleRateSelect = document.getElementById('sample-rate');
-const compressionLevelSelect = document.getElementById('compression-level');
 const logContainer = document.getElementById('log-container');
 const resultsContainer = document.getElementById('results-container');
 const fileCountEl = document.getElementById('file-count');
@@ -220,6 +220,9 @@ selectLibraryButton.addEventListener('click', async () => {
         clearResults();
         fileCountEl.textContent = '';
         convertButton.disabled = true;
+        if (saveFolderButton) {
+            saveFolderButton.disabled = true;
+        }
 
         logMessage(`Scanning library: ${dirHandle.name}...`);
 
@@ -236,6 +239,9 @@ selectLibraryButton.addEventListener('click', async () => {
 
         if (instrumentCount > 0) {
             convertButton.disabled = false;
+            if (saveFolderButton) {
+                saveFolderButton.disabled = false;
+            }
         } else {
             logMessage('No valid instrument packs found.', 'error');
         }
@@ -275,6 +281,9 @@ selectFolderButton.addEventListener('click', async () => {
         clearResults();
         fileCountEl.textContent = '';
         convertButton.disabled = true;
+        if (saveFolderButton) {
+            saveFolderButton.disabled = true;
+        }
         convertButton.classList.add('bg-gray-400', 'cursor-not-allowed');
         convertButton.classList.remove('bg-green-600', 'hover:bg-green-700');
         
@@ -289,6 +298,9 @@ selectFolderButton.addEventListener('click', async () => {
             convertButton.disabled = false;
             convertButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
             convertButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            if (saveFolderButton) {
+                saveFolderButton.disabled = false;
+            }
         } else {
              logMessage('No instrument folders with .wav files found in the selected directory.', 'error');
         }
@@ -319,15 +331,8 @@ convertButton.addEventListener('click', async () => {
      }
      
      logMessage('All instruments processed. Generating final ZIP file...', 'final');
-    const compressionLevel = parseInt(compressionLevelSelect.value, 10);
 
-     const zipBlob = await mainZip.generateAsync({
-        type: "blob",
-        compression: "DEFLATE",
-        compressionOptions: {
-            level: compressionLevel
-        }
-    }, (metadata) => {
+     const zipBlob = await mainZip.generateAsync({ type: "blob" }, (metadata) => {
         if (metadata.percent) {
             logMessage(`Zip generation progress: ${metadata.percent.toFixed(2)}%`);
         }
@@ -346,6 +351,36 @@ convertButton.addEventListener('click', async () => {
                       });
                   }});
 
+if (saveFolderButton) {
+    saveFolderButton.addEventListener('click', async () => {
+        logMessage('Starting conversion process...');
+        const isTestRun = testRunCheckbox.checked;
+        let instrumentEntries = Object.entries(instruments);
+
+        if (isTestRun && instrumentEntries.length > 0) {
+            logMessage('Test run enabled. Processing first instrument only.');
+            instrumentEntries = [instrumentEntries[0]];
+        }
+        generatedPresetNames.clear();
+
+        try {
+            const dirHandle = await window.showDirectoryPicker();
+            for (const [instrumentPath, instrumentData] of instrumentEntries) {
+                if (instrumentData.files.length <= 1) {
+                    logMessage(`Skipping instrument ${instrumentPath} because it has only one sample.`, 'info');
+                    continue;
+                }
+                await savePresetToFolder(dirHandle, instrumentPath, instrumentData.files, instrumentData.pack);
+            }
+            logMessage('All instruments processed and saved.', 'success');
+        } catch (err) {
+            if (err.name !== 'AbortError') {
+                logMessage(`Error saving to folder: ${err.message}`, 'error');
+            }
+        }
+    });
+}
+
 function generateFinalPresetName(baseName) {
     let finalName = baseName;
     let counter = 1;
@@ -359,7 +394,7 @@ function generateFinalPresetName(baseName) {
 }
 
 
-async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShortName = null) {
+async function generatePresetData(instrumentPath, wavFileHandles, packShortName = null) {
     const pathParts = instrumentPath.split('/');
     const instrumentName = pathParts.pop() || 'Unnamed';
     const instrumentType = pathParts.length > 0 ? pathParts.pop() : 'Misc';
@@ -384,12 +419,11 @@ async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShort
     const presetFolderName = `${soundTypeFolder}/${finalPresetName}.preset`;
 
     logMessage(`Processing instrument: ${instrumentName} (Type: ${instrumentType}, Pack: ${packShortName || 'N/A'})`);
-    
+
     const patchJson = JSON.parse(JSON.stringify(baseMultisampleJson));
     const targetSampleRate = parseInt(sampleRateSelect.value, 10);
     let samplesData = [];
 
-    // 1. Parse all filenames
     for (const fileHandle of wavFileHandles) {
         try {
             const [baseName, midiValue] = parseFilename(fileHandle.name);
@@ -399,10 +433,8 @@ async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShort
         }
     }
 
-    // 2. Sort by MIDI note
     samplesData.sort((a, b) => a.midi - b.midi);
 
-    // 3. Assign key ranges
     let lastKey = 0;
     samplesData.forEach(sample => {
         sample.lokey = lastKey;
@@ -413,17 +445,15 @@ async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShort
         samplesData[samplesData.length - 1].hikey = 127;
     }
 
-    // 4. Process and resample each file, returning the region data
+    const files = [];
     const regionPromises = samplesData.map(async (sample) => {
         const file = await sample.handle.getFile();
         const sanitizedSampleName = sanitizeName(file.name) + '.wav';
         logMessage(`  - Resampling ${file.name}`);
 
         const resampledWavBlob = await resampleAudio(file, targetSampleRate);
-        
-        const presetFilePath = `${presetFolderName}/${sanitizedSampleName}`;
-        mainZip.file(presetFilePath, resampledWavBlob);
-        
+        files.push({ name: sanitizedSampleName, blob: resampledWavBlob });
+
         const tempCtx = new AudioContext();
         const arrayBuffer = await resampledWavBlob.arrayBuffer();
         const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
@@ -431,7 +461,6 @@ async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShort
         await tempCtx.close();
         const framecount = Math.floor(duration * targetSampleRate);
 
-        // Return the region object instead of pushing it directly
         return {
             framecount: framecount, gain: 0, hikey: sample.hikey, lokey: sample.lokey,
             "loop.crossfade": 0, "loop.end": framecount, "loop.onrelease": false,
@@ -441,18 +470,43 @@ async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShort
         };
     });
 
-    // 5. Wait for all regions to be processed
     const generatedRegions = await Promise.all(regionPromises);
-
-    // 6. IMPORTANT: Sort the final regions array by lokey
     generatedRegions.sort((a, b) => a.lokey - b.lokey);
-    
-    // 7. Assign the correctly sorted regions to the JSON
     patchJson.regions = generatedRegions;
-    
-    // Add patch.json to the preset folder within the main zip
+
+    return { presetFolderName, patchJson, files };
+}
+
+async function addPresetToZip(mainZip, instrumentPath, wavFileHandles, packShortName = null) {
+    const { presetFolderName, patchJson, files } = await generatePresetData(instrumentPath, wavFileHandles, packShortName);
+
     const patchJsonPath = `${presetFolderName}/patch.json`;
     mainZip.file(patchJsonPath, JSON.stringify(patchJson, null, 2));
+
+    for (const file of files) {
+        const presetFilePath = `${presetFolderName}/${file.name}`;
+        mainZip.file(presetFilePath, file.blob);
+    }
+}
+
+async function savePresetToFolder(dirHandle, instrumentPath, wavFileHandles, packShortName = null) {
+    const { presetFolderName, patchJson, files } = await generatePresetData(instrumentPath, wavFileHandles, packShortName);
+
+    const [soundTypeFolderName, presetName] = presetFolderName.split('/');
+    const soundTypeFolderHandle = await dirHandle.getDirectoryHandle(soundTypeFolderName, { create: true });
+    const presetFolderHandle = await soundTypeFolderHandle.getDirectoryHandle(presetName, { create: true });
+
+    const patchFileHandle = await presetFolderHandle.getFileHandle('patch.json', { create: true });
+    const patchWritable = await patchFileHandle.createWritable();
+    await patchWritable.write(JSON.stringify(patchJson, null, 2));
+    await patchWritable.close();
+
+    for (const file of files) {
+        const fileHandle = await presetFolderHandle.getFileHandle(file.name, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file.blob);
+        await writable.close();
+    }
 }
 
 function addResultLink(filename, url) {
@@ -467,3 +521,9 @@ function addResultLink(filename, url) {
     
     resultsContainer.appendChild(link);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    if ('showDirectoryPicker' in window) {
+        saveFolderButton.style.display = 'inline-block';
+    }
+});

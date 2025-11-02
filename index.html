@@ -52,6 +52,9 @@
                 <button id="convert-button" class="w-full sm:w-auto bg-gray-400 text-white font-bold py-3 px-6 rounded-lg cursor-not-allowed transition-colors" disabled>
                     Generate Single ZIP
                 </button>
+                <button id="save-folder-button" class="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 px-6 rounded-lg cursor-not-allowed transition-colors" disabled style="display: none;">
+                    Save as Folder
+                </button>
             </div>
             <div class="flex items-center mt-4">
                 <input id="test-run-checkbox" type="checkbox" class="h-5 w-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -63,13 +66,6 @@
                     <option value="11025">11025</option>
                     <option value="22050" selected>22050</option>
                     <option value="44100">44100</option>
-                </select>
-            </div>
-            <div class="flex items-center mt-4">
-                <label for="compression-level" class="mr-2 text-gray-700 font-medium">Compression:</label>
-                <select id="compression-level" class="border-gray-300 rounded focus:ring-blue-500">
-                    <option value="1" selected>Fastest (larger file)</option>
-                    <option value="9">Best (slower)</option>
                 </select>
             </div>
             <p id="file-count" class="text-gray-600 mt-4 font-medium"></p>
