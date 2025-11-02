@@ -263,9 +263,12 @@ convertButton.addEventListener('click', async () => {
 async function addPresetToZip(mainZip, instrumentPath, wavFileHandles) {
     const pathParts = instrumentPath.split('/');
     const instrumentName = pathParts.pop() || 'Unnamed';
-    const instrumentType = pathParts[0] || 'Misc';
+    const instrumentType = pathParts.length > 0 ? pathParts[pathParts.length - 1] : 'Misc';
     const cleanedInstrumentName = sanitizeForPath(instrumentName.replace(/ samples?/i, '').trim());
-    const presetFolderName = `zzm-${sanitizeForPath(instrumentType)}-${cleanedInstrumentName}.preset`;
+
+    const soundTypeFolder = `zzm-${sanitizeForPath(instrumentType)}`;
+    const presetName = `zzm-${cleanedInstrumentName}.preset`;
+    const presetFolderName = `${soundTypeFolder}/${presetName}`;
 
     logMessage(`Processing instrument: ${instrumentName}`);
     
