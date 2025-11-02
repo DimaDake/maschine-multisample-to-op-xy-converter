@@ -65,6 +65,13 @@
                     <option value="44100">44100</option>
                 </select>
             </div>
+            <div class="flex items-center mt-4">
+                <label for="compression-level" class="mr-2 text-gray-700 font-medium">Compression:</label>
+                <select id="compression-level" class="border-gray-300 rounded focus:ring-blue-500">
+                    <option value="1" selected>Fastest (larger file)</option>
+                    <option value="9">Best (slower)</option>
+                </select>
+            </div>
             <p id="file-count" class="text-gray-600 mt-4 font-medium"></p>
         </div>
 

@@ -154,6 +154,7 @@ const selectLibraryButton = document.getElementById('select-library-button');
 const convertButton = document.getElementById('convert-button');
 const testRunCheckbox = document.getElementById('test-run-checkbox');
 const sampleRateSelect = document.getElementById('sample-rate');
+const compressionLevelSelect = document.getElementById('compression-level');
 const logContainer = document.getElementById('log-container');
 const resultsContainer = document.getElementById('results-container');
 const fileCountEl = document.getElementById('file-count');
@@ -320,8 +321,15 @@ convertButton.addEventListener('click', async () => {
      }
      
      logMessage('All instruments processed. Generating final ZIP file...', 'final');
+    const compressionLevel = parseInt(compressionLevelSelect.value, 10);
 
-     const zipBlob = await mainZip.generateAsync({ type: "blob" }, (metadata) => {
+     const zipBlob = await mainZip.generateAsync({
+        type: "blob",
+        compression: "DEFLATE",
+        compressionOptions: {
+            level: compressionLevel
+        }
+    }, (metadata) => {
         if (metadata.percent) {
             logMessage(`Zip generation progress: ${metadata.percent.toFixed(2)}%`);
         }
