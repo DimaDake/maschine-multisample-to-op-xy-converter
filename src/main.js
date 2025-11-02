@@ -309,6 +309,10 @@ convertButton.addEventListener('click', async () => {
      }
     generatedPresetNames.clear();
      for (const [instrumentPath, instrumentData] of instrumentEntries) {
+        if (instrumentData.files.length <= 1) {
+            logMessage(`Skipping instrument ${instrumentPath} because it has only one sample.`, 'info');
+            continue;
+        }
          await addPresetToZip(mainZip, instrumentPath, instrumentData.files, instrumentData.pack);
      }
      
