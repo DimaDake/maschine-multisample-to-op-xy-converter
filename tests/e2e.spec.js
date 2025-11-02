@@ -175,6 +175,11 @@ test('should handle NI library structure with pack names', async ({ page }) => {
                             name: 'Piano Reso G3.wav',
                             kind: 'file',
                             path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass c2.wav' // Use existing file to avoid 404
+                          },
+                          'Piano Reso A3.wav': {
+                            name: 'Piano Reso A3.wav',
+                            kind: 'file',
+                            path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass b2.wav' // Use existing file to avoid 404
                           }
                         }
                       }
@@ -202,28 +207,33 @@ test('should handle NI library structure with pack names', async ({ page }) => {
                     name: 'Bass',
                     kind: 'directory',
                     entries: {
-                      'Long Instrument Name That Will Be Truncated': {
-                        name: 'Long Instrument Name That Will Be Truncated',
+                      'TestBass': {
+                        name: 'TestBass',
                         kind: 'directory',
                         entries: {
-                          'sample1 a1.wav': {
-                            name: 'sample1 a1.wav',
+                          'TestBass b2.wav': {
+                            name: 'TestBass b2.wav',
                             kind: 'file',
-                            path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass c2.wav' // Using existing file for mock
+                            path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass b2.wav'
+                          },
+                          'TestBass c2.wav': {
+                            name: 'TestBass c2.wav',
+                            kind: 'file',
+                            path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass c2.wav'
                           }
                         }
                       },
-                      'Long Instrument Name That Will Be Truncated Also': {
-                         name: 'Long Instrument Name That Will Be Truncated Also',
-                         kind: 'directory',
-                         entries: {
-                           'sample2 b1.wav': {
-                             name: 'sample2 b1.wav',
-                             kind: 'file',
-                             path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass b2.wav' // Using existing file for mock
-                           }
-                         }
-                       }
+                      'Single Sample Instrument': {
+                        name: 'Single Sample Instrument',
+                        kind: 'directory',
+                        entries: {
+                          'single_sample c3.wav': {
+                            name: 'single_sample c3.wav',
+                            kind: 'file',
+                            path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass c2.wav' // Use existing file for mock
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -294,14 +304,13 @@ test('should handle NI library structure with pack names', async ({ page }) => {
     'zzm-Keys/',
     'zzm-Keys/zzm-M2L-Piano-Reso.preset/',
     'zzm-Keys/zzm-M2L-Piano-Reso.preset/Piano Reso G3.wav',
+    'zzm-Keys/zzm-M2L-Piano-Reso.preset/Piano Reso A3.wav',
     'zzm-Keys/zzm-M2L-Piano-Reso.preset/patch.json',
     'zzm-Bass/',
-    'zzm-Bass/zzm-AP-Long-Instrume.preset/',
-    'zzm-Bass/zzm-AP-Long-Instrume.preset/sample1 a1.wav',
-    'zzm-Bass/zzm-AP-Long-Instrume.preset/patch.json',
-    'zzm-Bass/zzm-AP-Long-Instru-1.preset/',
-    'zzm-Bass/zzm-AP-Long-Instru-1.preset/sample2 b1.wav',
-    'zzm-Bass/zzm-AP-Long-Instru-1.preset/patch.json',
+    'zzm-Bass/zzm-AP-TestBass.preset/',
+    'zzm-Bass/zzm-AP-TestBass.preset/TestBass b2.wav',
+    'zzm-Bass/zzm-AP-TestBass.preset/TestBass c2.wav',
+    'zzm-Bass/zzm-AP-TestBass.preset/patch.json',
   ].sort();
 
   expect(generatedEntries).toEqual(expectedEntries);
