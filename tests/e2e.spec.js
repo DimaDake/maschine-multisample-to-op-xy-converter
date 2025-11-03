@@ -89,6 +89,9 @@ test('should generate the correct zip file', async ({ page }) => {
 
   await expect(page.locator('#convert-button')).toBeEnabled();
 
+  // Set a custom prefix
+  await page.locator('#prefix-input').fill('custom');
+
   // Click the button to generate the zip. This starts a long-running process.
   await page.locator('#convert-button').click();
 
@@ -110,8 +113,8 @@ test('should generate the correct zip file', async ({ page }) => {
   // 1. Verify the file structure inside the zip
   const soundType = 'Bass';
   const instrumentName = 'TestBass';
-  const soundTypeFolder = `zzm-${soundType}`;
-  const presetName = `zzm-${instrumentName}.preset`;
+  const soundTypeFolder = `custom-${soundType}`;
+  const presetName = `custom-${instrumentName}.preset`;
   const presetPath = `${soundTypeFolder}/${presetName}`;
   const expectedEntries = [
     `${soundTypeFolder}/`,
@@ -257,6 +260,7 @@ test('should save the correct folder structure using File System Access API', as
 
   // 2. Click the save button
   await page.evaluate(() => { window.isSaving = true; }); // Set flag for our mock
+  await page.locator('#prefix-input').fill('custom');
   await page.locator('#save-folder-button').click();
 
   // 3. Wait for the process to complete
@@ -265,20 +269,20 @@ test('should save the correct folder structure using File System Access API', as
   // 4. Verify the file system operations
   const log = await page.evaluate(() => window.fileSystemAccessLog);
 
-  expect(log.some(entry => entry.type === 'dir' && entry.path === 'root/zzm-Bass')).toBe(true);
-  expect(log.some(entry => entry.type === 'dir' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset')).toBe(true);
+  expect(log.some(entry => entry.type === 'dir' && entry.path === 'root/custom-Bass')).toBe(true);
+  expect(log.some(entry => entry.type === 'dir' && entry.path === 'root/custom-Bass/custom-TestBass.preset')).toBe(true);
 
-  const patchFile = log.find(entry => entry.type === 'file' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset/patch.json');
+  const patchFile = log.find(entry => entry.type === 'file' && entry.path === 'root/custom-Bass/custom-TestBass.preset/patch.json');
   expect(patchFile).toBeDefined();
   expect(patchFile.content.regions.length).toBe(2);
   expect(patchFile.content.regions[0].sample).toBe('TestBass c2.wav');
   expect(patchFile.content.regions[1].sample).toBe('TestBass b2.wav');
 
-  const wavFile1 = log.find(entry => entry.type === 'file' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset/TestBass c2.wav');
+  const wavFile1 = log.find(entry => entry.type === 'file' && entry.path === 'root/custom-Bass/custom-TestBass.preset/TestBass c2.wav');
   expect(wavFile1).toBeDefined();
   expect(wavFile1.content).toBe('binary_wav_data');
 
-  const wavFile2 = log.find(entry => entry.type === 'file' && entry.path === 'root/zzm-Bass/zzm-TestBass.preset/TestBass b2.wav');
+  const wavFile2 = log.find(entry => entry.type === 'file' && entry.path === 'root/custom-Bass/custom-TestBass.preset/TestBass b2.wav');
   expect(wavFile2).toBeDefined();
   expect(wavFile2.content).toBe('binary_wav_data');
 });

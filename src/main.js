@@ -155,6 +155,7 @@ const convertButton = document.getElementById('convert-button');
 const saveFolderButton = document.getElementById('save-folder-button');
 const testRunCheckbox = document.getElementById('test-run-checkbox');
 const sampleRateSelect = document.getElementById('sample-rate');
+const prefixInput = document.getElementById('prefix-input');
 const logContainer = document.getElementById('log-container');
 const resultsContainer = document.getElementById('results-container');
 const fileCountEl = document.getElementById('file-count');
@@ -343,7 +344,8 @@ convertButton.addEventListener('click', async () => {
         }
      });
      const downloadUrl = URL.createObjectURL(zipBlob);
-     const finalZipName = `zzm-presets-all.zip`;
+     const prefix = prefixInput.value.trim() || 'zzm';
+     const finalZipName = `${prefix}-presets-all.zip`;
                   addResultLink(finalZipName, downloadUrl);
                   logMessage(`Successfully created ${finalZipName}.`, 'success');
      
@@ -407,11 +409,12 @@ async function generatePresetData(instrumentPath, wavFileHandles, packShortName 
     const cleanedInstrumentName = sanitizeForPath(instrumentName.replace(/ samples?/i, '').trim())
         .replace(/\s+/g, '-');
 
+    const prefix = prefixInput.value.trim() || 'zzm';
     let basePresetName;
     if (packShortName) {
-        basePresetName = `zzm-${packShortName}-${cleanedInstrumentName}`;
+        basePresetName = `${prefix}-${packShortName}-${cleanedInstrumentName}`;
     } else {
-        basePresetName = `zzm-${cleanedInstrumentName}`;
+        basePresetName = `${prefix}-${cleanedInstrumentName}`;
     }
 
     if (basePresetName.length > 20) {
@@ -420,7 +423,7 @@ async function generatePresetData(instrumentPath, wavFileHandles, packShortName 
 
     const finalPresetName = generateFinalPresetName(basePresetName);
 
-    const soundTypeFolder = `zzm-${sanitizeForPath(instrumentType)}`;
+    const soundTypeFolder = `${prefix}-${sanitizeForPath(instrumentType)}`;
     const presetFolderName = `${soundTypeFolder}/${finalPresetName}.preset`;
 
     logMessage(`Processing instrument: ${instrumentName} (Type: ${instrumentType}, Pack: ${packShortName || 'N/A'})`);
