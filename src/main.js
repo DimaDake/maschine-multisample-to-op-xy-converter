@@ -426,6 +426,22 @@ async function generatePresetData(instrumentPath, wavFileHandles, packShortName 
     logMessage(`Processing instrument: ${instrumentName} (Type: ${instrumentType}, Pack: ${packShortName || 'N/A'})`);
 
     const patchJson = JSON.parse(JSON.stringify(baseMultisampleJson));
+
+    if (instrumentType === 'Bass' || instrumentType === 'Lead' || instrumentType === 'Leads') {
+        patchJson.engine.playmode = 'mono';
+        if (instrumentType === 'Bass') {
+            patchJson.envelope = {
+                "amp": { "attack": 1000, "decay": 12000, "sustain": 28000, "release": 15000 },
+                "filter": { "attack": 0, "decay": 8000, "sustain": 20000, "release": 12000 }
+            };
+        } else {
+            patchJson.envelope = {
+                "amp": { "attack": 800, "decay": 8000, "sustain": 20000, "release": 12000 },
+                "filter": { "attack": 0, "decay": 6000, "sustain": 18000, "release": 10000 }
+            };
+        }
+    }
+
     const targetSampleRate = parseInt(sampleRateSelect.value, 10);
     let samplesData = [];
 
