@@ -149,6 +149,12 @@ const baseMultisampleJson = {
 
 // --- UI & App Logic ---
 
+function trackEvent(eventName, eventParams) {
+    if (typeof gtag === 'function') {
+        gtag('event', eventName, eventParams);
+    }
+}
+
 const selectFolderButton = document.getElementById('select-folder-button');
 const selectLibraryButton = document.getElementById('select-library-button');
 const convertButton = document.getElementById('convert-button');
@@ -209,6 +215,7 @@ async function findInstrumentsDirectory(packHandle, packShortName) {
 }
 
 selectLibraryButton.addEventListener('click', async () => {
+    trackEvent('select_library');
     if (!window.showDirectoryPicker) {
         logMessage('Your browser does not support the File System Access API.', 'error');
         return;
@@ -269,6 +276,7 @@ async function processDirectory(dirHandle, packName, path = '') {
 }
 
 selectFolderButton.addEventListener('click', async () => {
+    trackEvent('select_folder');
     if (!window.showDirectoryPicker) {
         logMessage('Your browser does not support the File System Access API. Please use a modern browser like Chrome or Edge.', 'error');
         return;
@@ -313,6 +321,11 @@ selectFolderButton.addEventListener('click', async () => {
 });
 
 convertButton.addEventListener('click', async () => {
+     trackEvent('generate_zip', {
+        test_run: testRunCheckbox.checked,
+        sample_rate: sampleRateSelect.value,
+        prefix: prefixInput.value
+     });
      logMessage('Starting conversion process...');
      const isTestRun = testRunCheckbox.checked;
      let instrumentEntries = Object.entries(instruments);
@@ -360,6 +373,11 @@ convertButton.addEventListener('click', async () => {
 
 if (saveFolderButton) {
     saveFolderButton.addEventListener('click', async () => {
+        trackEvent('save_folder', {
+            test_run: testRunCheckbox.checked,
+            sample_rate: sampleRateSelect.value,
+            prefix: prefixInput.value
+        });
         logMessage('Starting conversion process...');
         const isTestRun = testRunCheckbox.checked;
         let instrumentEntries = Object.entries(instruments);
@@ -550,4 +568,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if ('showDirectoryPicker' in window) {
         saveFolderButton.style.display = 'inline-block';
     }
+
+    testRunCheckbox.addEventListener('change', () => {
+        trackEvent('toggle_test_run', { checked: testRunCheckbox.checked });
+    });
+
+    sampleRateSelect.addEventListener('change', () => {
+        trackEvent('change_sample_rate', { sample_rate: sampleRateSelect.value });
+    });
+
+    prefixInput.addEventListener('change', () => {
+        trackEvent('change_prefix', { prefix: prefixInput.value });
+    });
 });
