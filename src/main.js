@@ -86,8 +86,7 @@ function audioBufferToWav(audioBuffer) {
 
 
 function sanitizeName(name) {
-    // Removes file extension and sanitizes
-    const nameWithoutExt = name.split('.').slice(0, -1).join('.');
+    const nameWithoutExt = name.includes('.') ? name.substring(0, name.lastIndexOf('.')) : name;
     return nameWithoutExt.replace(/[^a-zA-Z0-9 #\-().]+/g, '').trim();
 }
 
@@ -98,33 +97,26 @@ function sanitizeForPath(name) {
 
 function parseFilename(filename) {
     const fileNameWithoutExtension = filename.split('.').slice(0, -1).join('.');
-    const parts = fileNameWithoutExtension.split(/[\s_-]+/);
-    let baseNameParts = [];
-    let midiValue = null;
-    const notePattern = /([A-G][b#]?)(\d+)/i;
+    const notePattern = /(([A-G][b#]?)(\d+))$/i; // Capture full note string
+    const noteMatch = fileNameWithoutExtension.match(notePattern);
 
-    for (const part of parts) {
-        const noteMatch = part.match(notePattern);
-        if (noteMatch) {
-            const noteName = noteMatch[1];
-            const octave = parseInt(noteMatch[2], 10);
-            const fullNoteString = `${noteName}${octave}`;
-            midiValue = noteStringToMidiValue(fullNoteString);
-            break;
-        }
-        if (!/^\d+$/.test(part)) {
-            baseNameParts.push(part);
-        }
-    }
-    const baseName = baseNameParts.join(' ');
-    if (midiValue !== null) {
-        return [sanitizeName(baseName), midiValue];
+    if (noteMatch) {
+        const fullNoteString = noteMatch[1];
+        const noteName = noteMatch[2];
+        const octave = parseInt(noteMatch[3], 10);
+        const midiValue = noteStringToMidiValue(`${noteName}${octave}`);
+        
+        let baseName = fileNameWithoutExtension.substring(0, noteMatch.index);
+        baseName = baseName.replace(/[\s_-]+$/, '').trim();
+        baseName = baseName.replace(/[\s_-]+/g, ' ');
+
+        return [baseName, midiValue, fullNoteString]; // returning note string
     } else {
         throw new Error(`Filename '${filename}' does not contain a recognizable pitch (e.g., A#3, C4).`);
     }
 }
 
-const NOTE_OFFSET = [33, 35, 24, 26, 28, 29, 31];
+const NOTE_OFFSET = [21, 23, 12, 14, 16, 17, 19];
 function noteStringToMidiValue(note) {
     const string = note.replace(' ', '');
     if (string.length < 2) throw new Error("Bad note format");
@@ -468,8 +460,8 @@ async function generatePresetData(instrumentPath, wavFileHandles, packShortName 
 
     for (const fileHandle of wavFileHandles) {
         try {
-            const [baseName, midiValue] = parseFilename(fileHandle.name);
-            samplesData.push({ handle: fileHandle, midi: midiValue, baseName: baseName });
+            const [baseName, midiValue, noteString] = parseFilename(fileHandle.name); // expecting 3 values
+            samplesData.push({ handle: fileHandle, midi: midiValue, baseName: baseName, noteString: noteString }); // add noteString
         } catch (e) {
             logMessage(`- Skipping ${fileHandle.name}: ${e.message}`, 'error');
         }
@@ -490,7 +482,7 @@ async function generatePresetData(instrumentPath, wavFileHandles, packShortName 
     const files = [];
     const regionPromises = samplesData.map(async (sample) => {
         const file = await sample.handle.getFile();
-        const sanitizedSampleName = sanitizeName(file.name) + '.wav';
+        const sanitizedSampleName = `${sanitizeName(sample.baseName)} ${sample.noteString}.wav`;
         logMessage(`  - Resampling ${file.name}`);
 
         const resampledWavBlob = await resampleAudio(file, targetSampleRate);

@@ -132,9 +132,9 @@ test('should generate the correct zip file', async ({ page }) => {
 
   // Note: The regions are sorted by MIDI note value (C2 < B2)
   expect(generatedPatch.regions[0].sample).toBe('TestBass c2.wav');
-  expect(generatedPatch.regions[0]['pitch.keycenter']).toBe(48); // C2
+  expect(generatedPatch.regions[0]['pitch.keycenter']).toBe(36); // C2
   expect(generatedPatch.regions[1].sample).toBe('TestBass b2.wav');
-  expect(generatedPatch.regions[1]['pitch.keycenter']).toBe(59); // B2
+  expect(generatedPatch.regions[1]['pitch.keycenter']).toBe(47); // B2
 
   // 3. Verify WAV files exist
   const generatedWav1 = generatedZip.getEntry(`${presetPath}/TestBass b2.wav`);
@@ -143,6 +143,121 @@ test('should generate the correct zip file', async ({ page }) => {
   expect(generatedWav2).not.toBeNull();
 
   // Clean up the downloaded file
+  fs.unlinkSync(tempFilePath);
+});
+
+test('should correctly calculate MIDI pitch values', async ({ page }) => {
+  test.setTimeout(60000);
+  page.on('console', msg => console.log(`BROWSER LOG: ${msg.text()}`));
+
+  const mockStructure = {
+    name: 'Instruments',
+    kind: 'directory',
+    entries: {
+      'PitchTest': {
+        name: 'PitchTest',
+        kind: 'directory',
+        entries: {
+          'Pitch Test': {
+            name: 'Pitch Test',
+            kind: 'directory',
+            entries: {
+              'PitchTest C4.wav': {
+                name: 'PitchTest C4.wav',
+                kind: 'file',
+                path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass c2.wav' // Re-use existing file data
+              },
+              'PitchTest A4.wav': {
+                name: 'PitchTest A4.wav',
+                kind: 'file',
+                path: 'tests/data/Samples/Instruments/Bass/TestBass/TestBass b2.wav' // Re-use existing file data
+              }
+            }
+          }
+        }
+      }
+    }
+  };
+
+  await page.route('**/__playwright_mock_file__/**', (route, request) => {
+    const requestedPath = decodeURIComponent(request.url().split('/__playwright_mock_file__/')[1]);
+    const filePath = path.resolve(__dirname, '..', requestedPath);
+    if (fs.existsSync(filePath)) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'audio/wav',
+        body: fs.readFileSync(filePath)
+      });
+    }
+    return route.fulfill({ status: 404 });
+  });
+
+  await page.addInitScript((mockStructure) => {
+    function createMockHandle(entry) {
+      return {
+        name: entry.name,
+        kind: entry.kind,
+        async *[Symbol.asyncIterator]() {
+          if (entry.kind === 'directory') {
+            for (const child of Object.values(entry.entries)) {
+              yield createMockHandle(child);
+            }
+          }
+        },
+        values() {
+          return this[Symbol.asyncIterator]();
+        },
+        async getFile() {
+          if (this.kind === 'file') {
+            const response = await fetch(`/__playwright_mock_file__/${entry.path}`);
+            const blob = await response.blob();
+            return new File([blob], this.name, { type: 'audio/wav' });
+          }
+          throw new Error('Not a file');
+        }
+      };
+    }
+
+    window.showDirectoryPicker = async () => {
+      return createMockHandle(mockStructure);
+    };
+  }, mockStructure);
+
+  await page.goto('/index.html');
+
+  await page.locator('#select-folder-button').click();
+
+  await expect(page.locator('#file-count')).toHaveText('1 instrument(s) found.', { timeout: 10000 });
+
+  await page.locator('#convert-button').click();
+
+  const downloadLink = page.locator('#results-container a');
+  await downloadLink.waitFor({ state: 'visible', timeout: 60000 });
+
+  const downloadPromise = page.waitForEvent('download');
+  await downloadLink.click();
+  const download = await downloadPromise;
+  const tempFilePath = path.join(__dirname, 'temp-pitch-test.zip');
+  await download.saveAs(tempFilePath);
+
+  // --- Verification ---
+  const generatedZip = new AdmZip(tempFilePath);
+  const presetPath = 'zzm-PitchTest/zzm-Pitch-Test.preset';
+  
+  // Verify the content of patch.json
+  const generatedPatch = JSON.parse(generatedZip.readAsText(`${presetPath}/patch.json`));
+  expect(generatedPatch.regions.length).toBe(2);
+
+  const regionC4 = generatedPatch.regions.find(r => r.sample === 'PitchTest C4.wav');
+  const regionA4 = generatedPatch.regions.find(r => r.sample === 'PitchTest A4.wav');
+
+  expect(regionC4).toBeDefined();
+  expect(regionA4).toBeDefined();
+
+  // Assert correct MIDI values
+  expect(regionC4['pitch.keycenter']).toBe(60); // C4 should be MIDI note 60
+  expect(regionA4['pitch.keycenter']).toBe(69); // A4 should be MIDI note 69
+
   fs.unlinkSync(tempFilePath);
 });
 

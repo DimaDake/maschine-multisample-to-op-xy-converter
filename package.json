@@ -25,5 +25,8 @@
     "@playwright/test": "^1.56.1",
     "adm-zip": "^0.5.16",
     "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
   }
 }
