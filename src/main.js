@@ -220,8 +220,12 @@ selectLibraryButton.addEventListener('click', async () => {
         clearResults();
         fileCountEl.textContent = '';
         convertButton.disabled = true;
+        convertButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+        convertButton.classList.remove('bg-green-600', 'hover:bg-green-700');
         if (saveFolderButton) {
             saveFolderButton.disabled = true;
+            saveFolderButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveFolderButton.classList.remove('bg-teal-600', 'hover:bg-teal-700');
         }
 
         logMessage(`Scanning library: ${dirHandle.name}...`);
@@ -239,8 +243,12 @@ selectLibraryButton.addEventListener('click', async () => {
 
         if (instrumentCount > 0) {
             convertButton.disabled = false;
+            convertButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+            convertButton.classList.add('bg-green-600', 'hover:bg-green-700');
             if (saveFolderButton) {
                 saveFolderButton.disabled = false;
+                saveFolderButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                saveFolderButton.classList.add('bg-teal-600', 'hover:bg-teal-700');
             }
         } else {
             logMessage('No valid instrument packs found.', 'error');
@@ -284,6 +292,8 @@ selectFolderButton.addEventListener('click', async () => {
         convertButton.disabled = true;
         if (saveFolderButton) {
             saveFolderButton.disabled = true;
+            saveFolderButton.classList.add('bg-gray-400', 'cursor-not-allowed');
+            saveFolderButton.classList.remove('bg-teal-600', 'hover:bg-teal-700');
         }
         convertButton.classList.add('bg-gray-400', 'cursor-not-allowed');
         convertButton.classList.remove('bg-green-600', 'hover:bg-green-700');
@@ -301,6 +311,8 @@ selectFolderButton.addEventListener('click', async () => {
             convertButton.classList.add('bg-green-600', 'hover:bg-green-700');
             if (saveFolderButton) {
                 saveFolderButton.disabled = false;
+                saveFolderButton.classList.remove('bg-gray-400', 'cursor-not-allowed');
+                saveFolderButton.classList.add('bg-teal-600', 'hover:bg-teal-700');
             }
         } else {
              logMessage('No instrument folders with .wav files found in the selected directory.', 'error');
